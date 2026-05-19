@@ -1,5 +1,6 @@
 param(
-  [switch]$Apply
+  [switch]$Apply,
+  [switch]$Force
 )
 
 $ErrorActionPreference = 'Stop'
@@ -15,6 +16,9 @@ if (-not $node) {
 $setupArgs = @()
 if ($Apply) {
   $setupArgs += '--apply'
+}
+if ($Force) {
+  $setupArgs += '--force'
 }
 $setupArgs += $args
 

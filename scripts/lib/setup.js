@@ -13,6 +13,7 @@ function run(command, args) {
 
 function main() {
   const apply = process.argv.includes('--apply');
+  const force = process.argv.includes('--force');
   const json = process.argv.includes('--json');
   const before = runDoctor();
 
@@ -37,6 +38,26 @@ function main() {
       console.log(`${result.ok ? 'OK' : 'WARN'}  ${result.name} - ${result.detail}`);
     }
     return before.ok ? 0 : 1;
+  }
+
+  const blockingChecks = [
+    'RTK approved version',
+    'Legacy token-saver hooks absent',
+    'Other PreToolUse hooks reviewed'
+  ];
+  const blockers = before.results.filter((result) => blockingChecks.includes(result.name) && !result.ok);
+  if (blockers.length > 0 && !force) {
+    console.log('Refusing to apply RTK setup because conflicts or unapproved RTK state were detected:');
+    for (const blocker of blockers) {
+      console.log(`WARN  ${blocker.name} - ${blocker.detail}`);
+    }
+    console.log('');
+    console.log('Resolve these items first, or re-run with --apply --force after manual review.');
+    return 1;
+  }
+
+  if (force) {
+    console.log('Force mode enabled. Proceeding despite doctor warnings after manual review.');
   }
 
   console.log('Running: rtk init -g');

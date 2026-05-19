@@ -7,15 +7,23 @@ Upstream repo: https://github.com/rtk-ai/rtk
 ## Recommended Rollout
 
 1. Pilot on one developer machine.
-2. Run the doctor script before changing hooks.
-3. Install RTK from an approved upstream release.
-4. Run RTK's Claude Code initialization.
-5. Run the doctor script again.
-6. Confirm regular H5G workflows still show enough diagnostic output.
+2. Clone `https://github.com/michaelericksonh5/rtk-token-saver` so setup scripts can be reviewed before use.
+3. Run the doctor script before changing hooks.
+4. Install approved RTK `0.40.0`.
+5. Remove legacy `token-saver` hooks and review any other `PreToolUse` hooks reported by doctor.
+6. Run RTK's Claude Code initialization with the wrapper setup script.
+7. Run the doctor script again.
+8. Confirm regular H5G workflows still show enough diagnostic output.
 
 ## Claude Code Setup
 
-After RTK is installed and available on `PATH`, run:
+After RTK `0.40.0` is installed and available on `PATH`, run a dry check:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1
+```
+
+Then apply:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -Apply
@@ -24,10 +32,11 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -Apply
 On macOS/Linux:
 
 ```sh
+./scripts/setup.sh
 ./scripts/setup.sh --apply
 ```
 
-The setup script checks for `rtk`, warns about legacy `token-saver` hooks, and then runs RTK's Claude Code initialization only when explicitly requested.
+The setup script checks for `rtk`, legacy `token-saver` hooks, other non-RTK `PreToolUse` hooks, and the approved RTK version. It runs RTK's Claude Code initialization only when explicitly requested. Use `--force` / `-Force` only after manually reviewing warnings.
 
 ## Why Setup Is Opt-In
 
@@ -35,4 +44,4 @@ RTK modifies global Claude Code hook settings and proxies shell commands. That c
 
 ## Token Saver Replacement
 
-The original H5G `token-saver` plugin should remain in GitHub for rollback or future reuse, but the marketplace should list this RTK wrapper instead.
+The original H5G `token-saver` plugin remains in GitHub for rollback or future reuse, but the marketplace now lists this RTK wrapper instead.

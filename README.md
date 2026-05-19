@@ -31,7 +31,16 @@ Then invoke:
 
 ## RTK Setup
 
-Install RTK from a reviewed upstream release first. Then run a dry check:
+Clone this wrapper repo when you want to run setup or doctor scripts:
+
+```powershell
+git clone https://github.com/michaelericksonh5/rtk-token-saver
+cd rtk-token-saver
+```
+
+Marketplace install gives Claude the `/rtk-token-saver` skill. The setup scripts are intentionally run from a checked-out repo so users can review them before changing global Claude Code hooks.
+
+Install RTK `0.40.0` from a reviewed upstream release first. Then run a dry check:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1
@@ -43,11 +52,18 @@ Apply RTK's Claude Code initialization only when ready:
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -Apply
 ```
 
+`-Apply` refuses to run when legacy `token-saver` hooks, other non-RTK `PreToolUse` hooks, or an unapproved RTK version are detected. Use `-Force` only after manual review:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -Apply -Force
+```
+
 On macOS/Linux:
 
 ```sh
 ./scripts/setup.sh
 ./scripts/setup.sh --apply
+./scripts/setup.sh --apply --force
 ```
 
 ## Doctor
@@ -59,17 +75,27 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\doctor.ps1
 The doctor checks:
 
 - RTK is on `PATH`.
+- RTK resolves to the reviewed binary path and approved version.
 - Claude Code CLI is installed.
 - `~/.claude/settings.json` exists.
 - An RTK `PreToolUse` hook is configured.
 - Legacy H5G `token-saver` hooks are absent.
+- Other non-RTK `PreToolUse` hooks are absent or reviewed.
 - This wrapper has no bundled competing hook.
 
 ## Replacing token-saver
 
-The old `token_saver` repo should remain available for rollback or reuse. The H5G marketplace should remove `token-saver` and list `rtk-token-saver` instead.
+The old `token_saver` repo remains available for rollback or reuse. The H5G marketplace now lists `rtk-token-saver` instead of `token-saver`.
 
 Do not run legacy `token-saver` filtering and RTK filtering together unless hook ordering has been tested.
+
+For existing `token-saver` users:
+
+1. Run `scripts/doctor.ps1` from this repo.
+2. Remove legacy token-saver hook entries from `~/.claude/settings.json`, or restore the timestamped `settings.token-saver-backup.*.json` file created by the old installer.
+3. Remove `~/.claude/token-saver/` only after confirming no other workflow depends on it.
+4. Run `scripts/setup.ps1 -Apply`.
+5. Restart Claude Code.
 
 ## Validation
 

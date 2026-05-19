@@ -40,6 +40,34 @@ test('doctor detects legacy token-saver and RTK hook state', () => {
   assert.strictEqual(legacy.ok, false);
 });
 
+test('doctor detects token_saver spelling and other PreToolUse hooks', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'rtk-token-saver-test-'));
+  const claudeDir = path.join(home, '.claude');
+  fs.mkdirSync(claudeDir, { recursive: true });
+  fs.writeFileSync(path.join(claudeDir, 'settings.json'), JSON.stringify({
+    hooks: {
+      PreToolUse: [
+        {
+          matcher: 'Bash',
+          hooks: [
+            { type: 'command', command: 'rtk hook claude', timeout: 10 },
+            { type: 'command', command: 'node ~/.claude/token_saver/lib/pretool-filter.js', timeout: 10 },
+            { type: 'command', command: 'node ~/.claude/custom/pretool.js', timeout: 10 }
+          ]
+        }
+      ]
+    }
+  }, null, 2));
+
+  const report = runDoctor({ home });
+  const legacy = report.results.find((result) => result.name === 'Legacy token-saver hooks absent');
+  const otherHooks = report.results.find((result) => result.name === 'Other PreToolUse hooks reviewed');
+  assert.strictEqual(legacy.ok, false);
+  assert.match(legacy.detail, /token_saver/);
+  assert.strictEqual(otherHooks.ok, false);
+  assert.match(otherHooks.detail, /custom\/pretool/);
+});
+
 test('package validator rejects nested archives and requires plugin files', () => {
   const result = validatePackage(root);
   assert.strictEqual(result.requiredPresent, true);
