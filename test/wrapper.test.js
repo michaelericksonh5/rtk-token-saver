@@ -2,10 +2,12 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { spawnSync } = require('child_process');
 const test = require('node:test');
 
 const root = path.resolve(__dirname, '..');
-const { runDoctor } = require('../scripts/lib/doctor');
+const { parseRtkVersion, runDoctor } = require('../scripts/lib/doctor');
+const { ASSETS, RTK_VERSION, defaultInstallDir } = require('../scripts/lib/install-rtk');
 const { validatePackage } = require('../scripts/lib/validate-package');
 
 test('plugin manifest is marketplace compatible and does not register hooks', () => {
@@ -72,4 +74,31 @@ test('package validator rejects nested archives and requires plugin files', () =
   const result = validatePackage(root);
   assert.strictEqual(result.requiredPresent, true);
   assert.strictEqual(result.nestedArchiveCount, 0);
+});
+
+test('RTK installer pins reviewed release assets', () => {
+  assert.strictEqual(RTK_VERSION, '0.40.0');
+  assert.match(ASSETS['win32-x64'].name, /windows-msvc\.zip$/);
+  assert.match(ASSETS['darwin-arm64'].name, /apple-darwin\.tar\.gz$/);
+  assert.match(ASSETS['darwin-x64'].name, /apple-darwin\.tar\.gz$/);
+  assert.match(ASSETS['linux-x64'].name, /linux-musl\.tar\.gz$/);
+  for (const asset of Object.values(ASSETS)) {
+    assert.match(asset.sha256, /^[a-f0-9]{64}$/);
+  }
+  assert.strictEqual(defaultInstallDir(), path.join(os.homedir(), '.local', 'bin'));
+});
+
+test('doctor parses RTK versions exactly', () => {
+  assert.strictEqual(parseRtkVersion('rtk 0.40.0'), '0.40.0');
+  assert.strictEqual(parseRtkVersion('rtk v0.40.0'), '0.40.0');
+  assert.strictEqual(parseRtkVersion('rtk 0.40.01'), '0.40.01');
+  assert.notStrictEqual(parseRtkVersion('rtk 0.40.01'), '0.40.0');
+});
+
+test('standalone installer requires explicit install flag', () => {
+  const result = spawnSync(process.execPath, [path.join(root, 'scripts/lib/install-rtk.js')], {
+    encoding: 'utf8'
+  });
+  assert.notStrictEqual(result.status, 0);
+  assert.match(result.stderr, /explicit --install-rtk/);
 });

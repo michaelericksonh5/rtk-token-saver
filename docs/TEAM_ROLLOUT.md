@@ -11,7 +11,7 @@ Do not fork RTK unless H5G needs code-level changes. Start with this wrapper plu
 1. Pick one developer machine.
 2. Install the `rtk-token-saver` plugin from the H5G marketplace.
 3. Clone `https://github.com/michaelericksonh5/rtk-token-saver` to run setup and doctor scripts.
-4. Install RTK `0.40.0` from a reviewed upstream release.
+4. Install RTK `0.40.0` with `scripts/setup.ps1 -InstallRtk`.
 5. Run `scripts/doctor.ps1`.
 6. Remove legacy `token-saver` hooks or any unreviewed non-RTK `PreToolUse` hooks reported by doctor.
 7. Run `scripts/setup.ps1 -Apply`.
@@ -41,4 +41,4 @@ If RTK causes conflicts, remove the RTK hook from `~/.claude/settings.json` or r
 
 ## Admin Notes
 
-RTK is a local CLI/hook engine. Team-wide rollout should use approved RTK `0.40.0`, internal approval, and a short pilot before broad install.
+RTK is a local CLI/hook engine. Team-wide rollout should use approved RTK `0.40.0`, installed through this wrapper's checksum-verified user-local installer or another internally reviewed process.

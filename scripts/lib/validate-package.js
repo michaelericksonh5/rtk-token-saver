@@ -33,6 +33,8 @@ function validatePackage(root) {
     'skills/rtk-token-saver/SKILL.md',
     'skills/rtk-token-saver/RTK_SETUP.md',
     'scripts/lib/doctor.js',
+    'scripts/lib/install-rtk.js',
+    'scripts/lib/setup.js',
     'README.md'
   ];
   const missing = required.filter((file) => !files.includes(file));

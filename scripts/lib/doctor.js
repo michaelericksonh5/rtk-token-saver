@@ -24,6 +24,19 @@ function resolveCommand(command) {
   return String(result.stdout || '').split(/\r?\n/).find(Boolean) || '';
 }
 
+function defaultInstallDir() {
+  return path.join(os.homedir(), '.local', 'bin');
+}
+
+function samePath(left, right) {
+  return path.resolve(left).toLowerCase() === path.resolve(right).toLowerCase();
+}
+
+function parseRtkVersion(text) {
+  const match = String(text || '').match(/\b(?:rtk\s+)?v?(\d+\.\d+\.\d+)\b/i);
+  return match ? match[1] : '';
+}
+
 function readJson(filePath) {
   if (!fs.existsSync(filePath)) return null;
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
@@ -70,11 +83,15 @@ function runDoctor(options = {}) {
 
   const rtkVersion = commandResult('rtk');
   const rtkVersionText = (rtkVersion.stdout || rtkVersion.stderr || '').trim();
+  const parsedRtkVersion = parseRtkVersion(rtkVersionText);
   const rtkPath = resolveCommand('rtk');
+  const rtkInstallDir = rtkPath ? path.dirname(rtkPath) : '';
+  const approvedInstallDir = defaultInstallDir();
   const results = [
     check('RTK available on PATH', rtkVersion.status === 0, rtkVersionText || 'rtk --version failed'),
     check('RTK resolved path reviewed', rtkPath.length > 0, rtkPath || 'Could not resolve rtk path.'),
-    check('RTK approved version', rtkVersionText.includes(APPROVED_RTK_VERSION), `Expected ${APPROVED_RTK_VERSION}; found ${rtkVersionText || 'unknown'}`),
+    check('RTK approved version', parsedRtkVersion === APPROVED_RTK_VERSION, `Expected ${APPROVED_RTK_VERSION}; found ${parsedRtkVersion || rtkVersionText || 'unknown'}`),
+    check('RTK install path approved', rtkPath.length > 0 && samePath(rtkInstallDir, approvedInstallDir), `Expected ${approvedInstallDir}; found ${rtkInstallDir || 'unknown'}`),
     check('Claude Code CLI available', commandExists('claude'), 'Run `claude --version`.'),
     check('Claude settings file exists', fs.existsSync(settingsPath), settingsPath),
     check('RTK PreToolUse hook configured', rtkHooks.length > 0, rtkHooks.join(' | ') || 'No RTK PreToolUse hook found.'),
@@ -86,6 +103,7 @@ function runDoctor(options = {}) {
   return {
     ok: results.every((result) => result.ok),
     approvedRtkVersion: APPROVED_RTK_VERSION,
+    approvedInstallDir,
     rtkPath,
     settingsPath,
     results
@@ -112,5 +130,6 @@ if (require.main === module) {
 
 module.exports = {
   APPROVED_RTK_VERSION,
+  parseRtkVersion,
   runDoctor
 };

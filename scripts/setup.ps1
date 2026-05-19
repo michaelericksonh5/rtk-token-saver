@@ -1,6 +1,7 @@
 param(
   [switch]$Apply,
-  [switch]$Force
+  [switch]$Force,
+  [switch]$InstallRtk
 )
 
 $ErrorActionPreference = 'Stop'
@@ -19,6 +20,9 @@ if ($Apply) {
 }
 if ($Force) {
   $setupArgs += '--force'
+}
+if ($InstallRtk) {
+  $setupArgs += '--install-rtk'
 }
 $setupArgs += $args
 

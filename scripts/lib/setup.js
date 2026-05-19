@@ -3,6 +3,7 @@
 
 const { spawnSync } = require('child_process');
 const { runDoctor } = require('./doctor');
+const { installRtk } = require('./install-rtk');
 
 function run(command, args) {
   return spawnSync(command, args, {
@@ -11,11 +12,12 @@ function run(command, args) {
   });
 }
 
-function main() {
+async function main() {
   const apply = process.argv.includes('--apply');
   const force = process.argv.includes('--force');
+  const install = process.argv.includes('--install-rtk');
   const json = process.argv.includes('--json');
-  const before = runDoctor();
+  let before = runDoctor();
 
   if (json) {
     console.log(JSON.stringify({ before, applied: false }, null, 2));
@@ -23,12 +25,32 @@ function main() {
   }
 
   console.log('rtk-token-saver setup');
-  console.log('This wrapper does not install RTK binaries. Install RTK from a reviewed upstream release first.');
+  console.log('This wrapper installs pinned RTK only when --install-rtk is provided.');
   console.log('');
 
-  if (!before.results.find((result) => result.name === 'RTK available on PATH').ok) {
-    console.log('RTK was not found on PATH. Install RTK, then rerun this setup.');
-    return 1;
+  const needsRtkInstall = [
+    'RTK available on PATH',
+    'RTK approved version',
+    'RTK install path approved'
+  ].some((name) => {
+    const result = before.results.find((entry) => entry.name === name);
+    return !result || !result.ok;
+  });
+
+  if (needsRtkInstall) {
+    if (install) {
+      console.log('RTK was missing, unapproved, or outside the approved user-local path. Installing approved RTK into a user-local bin directory...');
+      const installResult = await installRtk();
+      console.log(`Installed RTK ${installResult.version}: ${installResult.binaryPath}`);
+      if (installResult.pathUpdated) {
+        console.log('Updated user PATH. Restart Claude Code or your terminal if this session cannot see rtk yet.');
+      }
+      before = runDoctor();
+    } else {
+      console.log('RTK was missing, unapproved, or outside the approved user-local path.');
+      console.log('Or run this setup with --install-rtk to install approved RTK into a user-local bin directory.');
+      return 1;
+    }
   }
 
   if (!apply) {
@@ -42,6 +64,7 @@ function main() {
 
   const blockingChecks = [
     'RTK approved version',
+    'RTK install path approved',
     'Legacy token-saver hooks absent',
     'Other PreToolUse hooks reviewed'
   ];
@@ -72,5 +95,10 @@ function main() {
 }
 
 if (require.main === module) {
-  process.exit(main());
+  main()
+    .then((code) => process.exit(code))
+    .catch((error) => {
+      console.error(`rtk-token-saver setup failed: ${error.message}`);
+      process.exit(1);
+    });
 }

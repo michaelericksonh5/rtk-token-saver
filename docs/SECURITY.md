@@ -6,10 +6,11 @@ RTK has a high-privilege surface because it integrates with shell-command execut
 
 - This wrapper does not run remote install scripts.
 - This wrapper does not vendor RTK binaries.
+- `scripts/setup.* --install-rtk` downloads the pinned RTK `v0.40.0` release asset, verifies SHA-256, and installs only `rtk` / `rtk.exe` into a user-local bin directory.
 - This wrapper does not auto-modify Claude settings during marketplace install.
 - `scripts/setup.*` only applies RTK initialization when users pass `--apply` or `-Apply`.
-- Setup blocks on legacy token-saver hooks, other non-RTK `PreToolUse` hooks, or non-approved RTK versions unless users pass `--force` / `-Force` after manual review.
-- Users should install approved RTK `0.40.0` from a reviewed upstream release.
+- Setup blocks on legacy token-saver hooks, other non-RTK `PreToolUse` hooks, non-approved RTK versions, or RTK binaries outside the approved user-local install directory unless users pass `--force` / `-Force` after manual review.
+- Users should install approved RTK `0.40.0` through this wrapper or another reviewed user-local process.
 
 ## Review Before Broad Rollout
 
