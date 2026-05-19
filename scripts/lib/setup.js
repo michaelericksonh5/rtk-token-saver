@@ -2,7 +2,7 @@
 'use strict';
 
 const { spawnSync } = require('child_process');
-const { runDoctor } = require('./doctor');
+const { migrateTokenSaverHooks, runDoctor } = require('./doctor');
 const { installRtk } = require('./install-rtk');
 
 function run(command, args) {
@@ -16,6 +16,7 @@ async function main() {
   const apply = process.argv.includes('--apply');
   const force = process.argv.includes('--force');
   const install = process.argv.includes('--install-rtk');
+  const migrate = process.argv.includes('--migrate-token-saver');
   const json = process.argv.includes('--json');
   let before = runDoctor();
 
@@ -53,6 +54,24 @@ async function main() {
     }
   }
 
+  const legacyHooks = before.results.find((entry) => entry.name === 'Legacy token-saver hooks absent');
+  if (legacyHooks && !legacyHooks.ok) {
+    if (migrate) {
+      const migration = migrateTokenSaverHooks();
+      if (migration.changed) {
+        console.log(`Removed legacy token-saver hooks from ${migration.settingsPath}`);
+        console.log(`Backup created: ${migration.backupPath}`);
+        for (const removed of migration.removed) {
+          console.log(`Removed: ${removed}`);
+        }
+      }
+      before = runDoctor();
+    } else {
+      console.log('Legacy token-saver hooks were detected. Re-run with --migrate-token-saver to remove only known H5G token-saver hooks.');
+      return 1;
+    }
+  }
+
   if (!apply) {
     console.log('Dry run only. Re-run with --apply to execute `rtk init -g` for Claude Code.');
     console.log('');
@@ -65,8 +84,7 @@ async function main() {
   const blockingChecks = [
     'RTK approved version',
     'RTK install path approved',
-    'Legacy token-saver hooks absent',
-    'Other PreToolUse hooks reviewed'
+    'Legacy token-saver hooks absent'
   ];
   const blockers = before.results.filter((result) => blockingChecks.includes(result.name) && !result.ok);
   if (blockers.length > 0 && !force) {
@@ -81,6 +99,12 @@ async function main() {
 
   if (force) {
     console.log('Force mode enabled. Proceeding despite doctor warnings after manual review.');
+  }
+
+  const otherHooks = before.results.find((result) => result.name === 'Other PreToolUse hooks reviewed');
+  if (otherHooks && !otherHooks.ok) {
+    console.log(`WARN  ${otherHooks.name} - ${otherHooks.detail}`);
+    console.log('Continuing with RTK setup; review hook ordering if behavior looks odd.');
   }
 
   console.log('Running: rtk init -g');

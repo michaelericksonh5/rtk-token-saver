@@ -1,7 +1,8 @@
 param(
   [switch]$Apply,
   [switch]$Force,
-  [switch]$InstallRtk
+  [switch]$InstallRtk,
+  [switch]$MigrateTokenSaver
 )
 
 $ErrorActionPreference = 'Stop'
@@ -23,6 +24,9 @@ if ($Force) {
 }
 if ($InstallRtk) {
   $setupArgs += '--install-rtk'
+}
+if ($MigrateTokenSaver) {
+  $setupArgs += '--migrate-token-saver'
 }
 $setupArgs += $args
 

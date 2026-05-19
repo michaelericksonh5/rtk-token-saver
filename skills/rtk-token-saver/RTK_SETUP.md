@@ -9,11 +9,10 @@ Upstream repo: https://github.com/rtk-ai/rtk
 1. Pilot on one developer machine.
 2. Clone `https://github.com/michaelericksonh5/rtk-token-saver` so setup scripts can be reviewed before use.
 3. Run the doctor script before changing hooks.
-4. Install approved RTK `0.40.0` with `scripts/setup.ps1 -InstallRtk` or `./scripts/setup.sh --install-rtk`.
-5. Remove legacy `token-saver` hooks and review any other `PreToolUse` hooks reported by doctor.
-6. Run RTK's Claude Code initialization with the wrapper setup script.
-7. Run the doctor script again.
-8. Confirm regular H5G workflows still show enough diagnostic output.
+4. Run `scripts/setup.ps1 -InstallRtk -MigrateTokenSaver -Apply` or `./scripts/setup.sh --install-rtk --migrate-token-saver --apply`.
+5. Run the doctor script again.
+6. Review any non-RTK `PreToolUse` hook warnings if behavior looks odd.
+7. Confirm regular H5G workflows still show enough diagnostic output.
 
 ## Claude Code Setup
 
@@ -41,14 +40,21 @@ Then apply:
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -Apply
 ```
 
+Recommended one-command setup:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -InstallRtk -MigrateTokenSaver -Apply
+```
+
 On macOS/Linux:
 
 ```sh
 ./scripts/setup.sh
 ./scripts/setup.sh --apply
+./scripts/setup.sh --install-rtk --migrate-token-saver --apply
 ```
 
-The setup script checks for `rtk`, legacy `token-saver` hooks, other non-RTK `PreToolUse` hooks, the approved RTK version, and the approved user-local install directory. It runs RTK's Claude Code initialization only when explicitly requested. Use `--force` / `-Force` only after manually reviewing warnings.
+The setup script checks for `rtk`, legacy `token-saver` hooks, other non-RTK `PreToolUse` hooks, the approved RTK version, and the approved user-local install directory. It can migrate legacy H5G token-saver hooks while preserving unrelated hooks. It runs RTK's Claude Code initialization only when explicitly requested. Use `--force` / `-Force` only after manually reviewing warnings.
 
 The RTK installer downloads the pinned `v0.40.0` GitHub release asset for the user's OS/CPU, verifies SHA-256, and installs only the `rtk` binary into a user-local bin directory. It does not require admin privileges with the default install location.
 

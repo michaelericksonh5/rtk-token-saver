@@ -58,13 +58,15 @@ Apply RTK's Claude Code initialization only when ready:
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -Apply
 ```
 
-You can combine install and apply:
+Recommended one-command setup for most users:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -InstallRtk -Apply
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -InstallRtk -MigrateTokenSaver -Apply
 ```
 
-`-Apply` refuses to run when legacy `token-saver` hooks, other non-RTK `PreToolUse` hooks, or an unapproved RTK version are detected. Use `-Force` only after manual review:
+`-MigrateTokenSaver` backs up `~/.claude/settings.json` and removes only known H5G legacy token-saver hook commands. Other `PreToolUse` hooks are reported as warnings so users can review hook ordering without being blocked.
+
+`-Apply` refuses to run when legacy `token-saver` hooks are still present, or when RTK is missing, the wrong version, or outside the approved user-local path. Use `-Force` only after manual review:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -Apply -Force
@@ -76,7 +78,7 @@ On macOS/Linux:
 ./scripts/setup.sh
 ./scripts/setup.sh --install-rtk
 ./scripts/setup.sh --apply
-./scripts/setup.sh --install-rtk --apply
+./scripts/setup.sh --install-rtk --migrate-token-saver --apply
 ./scripts/setup.sh --apply --force
 ```
 
@@ -108,11 +110,9 @@ Do not run legacy `token-saver` filtering and RTK filtering together unless hook
 
 For existing `token-saver` users:
 
-1. Run `scripts/doctor.ps1` from this repo.
-2. Remove legacy token-saver hook entries from `~/.claude/settings.json`, or restore the timestamped `settings.token-saver-backup.*.json` file created by the old installer.
+1. Run `scripts/setup.ps1 -InstallRtk -MigrateTokenSaver -Apply`.
+2. Restart Claude Code.
 3. Remove `~/.claude/token-saver/` only after confirming no other workflow depends on it.
-4. Run `scripts/setup.ps1 -Apply`.
-5. Restart Claude Code.
 
 ## Validation
 

@@ -6,7 +6,7 @@ const { spawnSync } = require('child_process');
 const test = require('node:test');
 
 const root = path.resolve(__dirname, '..');
-const { parseRtkVersion, runDoctor } = require('../scripts/lib/doctor');
+const { isLegacyTokenSaverCommand, migrateTokenSaverHooks, parseRtkVersion, runDoctor } = require('../scripts/lib/doctor');
 const { ASSETS, RTK_VERSION, defaultInstallDir } = require('../scripts/lib/install-rtk');
 const { validatePackage } = require('../scripts/lib/validate-package');
 
@@ -68,6 +68,55 @@ test('doctor detects token_saver spelling and other PreToolUse hooks', () => {
   assert.match(legacy.detail, /token_saver/);
   assert.strictEqual(otherHooks.ok, false);
   assert.match(otherHooks.detail, /custom\/pretool/);
+});
+
+test('migration removes only legacy token-saver hooks and backs up settings', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'rtk-token-saver-test-'));
+  const claudeDir = path.join(home, '.claude');
+  const settingsPath = path.join(claudeDir, 'settings.json');
+  fs.mkdirSync(claudeDir, { recursive: true });
+  fs.writeFileSync(settingsPath, JSON.stringify({
+    hooks: {
+      PreToolUse: [
+        {
+          matcher: 'Bash',
+          hooks: [
+            { type: 'command', command: 'node ~/.claude/token_saver/lib/pretool-filter.js', timeout: 10 },
+            { type: 'command', command: 'node ~/.claude/security/pretool-filter.js', timeout: 10 },
+            { type: 'command', command: 'pwsh C:/team/filter-output.ps1', timeout: 10 },
+            { type: 'command', command: 'node ~/.claude/custom/pretool.js', timeout: 10 }
+          ]
+        }
+      ],
+      PostToolUse: [
+        {
+          matcher: 'Bash',
+          hooks: [
+            { type: 'command', command: 'pwsh ~/.claude/hooks/token-saver-filter-output.ps1', timeout: 10 }
+          ]
+        }
+      ]
+    },
+    keep: true
+  }, null, 2));
+
+  const result = migrateTokenSaverHooks({ home });
+  const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+  const text = JSON.stringify(settings);
+  assert.strictEqual(result.changed, true);
+  assert.ok(fs.existsSync(result.backupPath));
+  assert.match(text, /custom\/pretool/);
+  assert.match(text, /security\/pretool-filter/);
+  assert.match(text, /team\/filter-output/);
+  assert.doesNotMatch(text, /token_saver|token-saver-filter-output/);
+  assert.strictEqual(settings.keep, true);
+});
+
+test('legacy token-saver detection is path-specific', () => {
+  assert.strictEqual(isLegacyTokenSaverCommand('node ~/.claude/token-saver/lib/pretool-filter.js'), true);
+  assert.strictEqual(isLegacyTokenSaverCommand('pwsh ~/.claude/hooks/token-saver-filter-output.ps1'), true);
+  assert.strictEqual(isLegacyTokenSaverCommand('node ~/.claude/security/pretool-filter.js'), false);
+  assert.strictEqual(isLegacyTokenSaverCommand('pwsh C:/team/filter-output.ps1'), false);
 });
 
 test('package validator rejects nested archives and requires plugin files', () => {
