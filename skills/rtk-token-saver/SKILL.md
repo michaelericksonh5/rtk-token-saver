@@ -1,0 +1,51 @@
+---
+name: rtk-token-saver
+description: Guide Claude users through RTK-based token reduction, model routing, context hygiene, and conflict-safe setup. Use when a user asks about token usage, Claude cost, shell output filtering, RTK, rtk-ai/rtk, model choice, Haiku/Sonnet/Opus routing, context compaction, or replacing token-saver.
+---
+
+# RTK Token Saver
+
+This plugin is an H5G wrapper around upstream RTK. RTK is the shell-output reduction engine; this skill provides H5G setup guidance, Claude model-routing rules, rollout checks, and conflict warnings.
+
+RTK is not vendored here and this plugin does not fork RTK. Users install RTK separately, then run the wrapper's setup or doctor scripts to verify Claude Code integration.
+
+## First Response Checklist
+
+When invoked, identify:
+
+- Whether the user is using Claude Code, Claude Desktop/Cowork, Cursor, or automation.
+- Whether RTK is installed and on `PATH`.
+- Whether Claude Code already has token-saver or other `PreToolUse` hooks.
+- Whether the task is small enough for `haiku` or `sonnet` instead of `opus`.
+- Whether context is near 70% or 85%.
+
+## Model Routing
+
+- Use `haiku` for summaries, extraction, classification, and simple rewrites.
+- Use `sonnet` for routine coding, debugging, and implementation.
+- Use `opusplan` for planning that benefits from Opus reasoning while keeping execution on Sonnet.
+- Use `opus` only when the task is genuinely high-risk, ambiguous, or Sonnet has already been insufficient.
+- Avoid `sonnet[1m]` and `opus[1m]` unless the user explicitly approves a long-context task.
+
+If Opus is active for a small task, recommend switching to `sonnet` or `haiku` before continuing.
+
+## RTK Guidance
+
+Use RTK for noisy shell workflows such as test runs, package manager output, Git/GitHub output, Docker/Kubernetes output, logs, and other verbose command results.
+
+Do not hide important output from the user. If RTK compacts a command and the task depends on exact details, ask for the full RTK log path or rerun the command with raw output redirected to a file.
+
+## Context Hygiene
+
+- Use `/clear` between unrelated tasks.
+- Use `/compact` before context becomes degraded; 70-80% is the normal warning range.
+- Save large logs to files and read/search only targeted ranges.
+- Prefer specific file/symbol searches over broad repository reads.
+- Use concise subagent handoffs for noisy exploration.
+
+For detailed references, read:
+
+- `RTK_SETUP.md`
+- `MODEL_ROUTING.md`
+- `CONTEXT_HYGIENE.md`
+- `TROUBLESHOOTING.md`
