@@ -31,10 +31,14 @@ function validatePackage(root) {
   const required = [
     '.claude-plugin/plugin.json',
     'skills/rtk-token-saver/SKILL.md',
+    'skills/rtk-token-saver/COMPACT_OUTPUT.md',
     'skills/rtk-token-saver/RTK_SETUP.md',
+    'output-styles/compact-tldr.md',
     'scripts/lib/doctor.js',
     'scripts/lib/install-rtk.js',
     'scripts/lib/setup.js',
+    'docs/TEAM_ROLLOUT.md',
+    'docs/SECURITY.md',
     'README.md'
   ];
   const missing = required.filter((file) => !files.includes(file));

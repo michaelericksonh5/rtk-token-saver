@@ -4,7 +4,7 @@
 
 The marketplace now lists `rtk-token-saver` instead of H5G `token-saver`. Keep the original `token_saver` GitHub repo intact for rollback and future reuse.
 
-Do not fork RTK unless H5G needs code-level changes. Start with this wrapper plus approved RTK `0.40.0`.
+Do not fork RTK unless H5G needs code-level changes. Start with this wrapper plus approved RTK `0.40.0` and the optional Compact TLDR output style.
 
 ## Pilot Steps
 
@@ -17,6 +17,18 @@ Do not fork RTK unless H5G needs code-level changes. Start with this wrapper plu
 7. Review any non-RTK `PreToolUse` hook warnings if behavior looks odd.
 8. Run normal H5G workflows: slot art, Spine animation, AI video, skill auditing, and regular coding/test loops.
 9. Confirm RTK reduces noisy output without hiding critical failures.
+10. Optionally select `Compact TLDR` in Claude Code `/config` and confirm replies stay concise without losing safety, exact errors, or verification status.
+
+## Compact TLDR Rollout
+
+Compact TLDR mode is a response-style feature, not a shell hook. Roll it out as an optional Claude Code output style before making it a team default.
+
+- RTK can reduce shell-output input/context tokens in Claude Code.
+- Compact replies reduce generated assistant output tokens and future transcript size.
+- `/compact` remains the tool for summarizing existing conversation context.
+- Desktop/Cowork compact behavior is advisory skill guidance unless the client supports the shipped output style or equivalent user settings.
+
+Keep escape hatches explicit: users should ask for full detail whenever debugging, security review, production operations, or exact reproduction steps need more context.
 
 ## Existing token-saver Cleanup
 
@@ -40,3 +52,5 @@ If RTK causes conflicts, remove the RTK hook from `~/.claude/settings.json` or r
 ## Admin Notes
 
 RTK is a local CLI/hook engine. Team-wide rollout should use approved RTK `0.40.0`, installed through this wrapper's checksum-verified user-local installer or another internally reviewed process.
+
+Compact TLDR mode does not require `SessionStart`, `UserPromptSubmit`, or `PreToolUse` hooks. Do not add compact-output hooks during rollout; use the shipped output style or skill guidance instead.

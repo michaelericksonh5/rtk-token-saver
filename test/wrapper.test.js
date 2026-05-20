@@ -14,7 +14,9 @@ test('plugin manifest is marketplace compatible and does not register hooks', ()
   const manifest = JSON.parse(fs.readFileSync(path.join(root, '.claude-plugin', 'plugin.json'), 'utf8'));
   assert.strictEqual(manifest.name, 'rtk-token-saver');
   assert.deepStrictEqual(manifest.skills, ['./skills/rtk-token-saver']);
+  assert.strictEqual(manifest.outputStyles, './output-styles/compact-tldr.md');
   assert.strictEqual(manifest.hooks, undefined);
+  assert.strictEqual(fs.existsSync(path.join(root, 'hooks', 'hooks.json')), false);
 });
 
 test('doctor detects legacy token-saver and RTK hook state', () => {

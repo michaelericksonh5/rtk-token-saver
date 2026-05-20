@@ -1,11 +1,11 @@
 ---
 name: rtk-token-saver
-description: Guide Claude users through RTK-based token reduction, model routing, context hygiene, and conflict-safe setup. Use when a user asks about token usage, Claude cost, shell output filtering, RTK, rtk-ai/rtk, model choice, Haiku/Sonnet/Opus routing, context compaction, or replacing token-saver.
+description: Guide Claude users through RTK-based token reduction, compact TLDR replies, model routing, context hygiene, and conflict-safe setup. Use when a user asks about token usage, Claude cost, shell output filtering, compact output, TLDR mode, RTK, rtk-ai/rtk, model choice, Haiku/Sonnet/Opus routing, context compaction, or replacing token-saver.
 ---
 
 # RTK Token Saver
 
-This plugin is an H5G wrapper around upstream RTK. RTK is the shell-output reduction engine; this skill provides H5G setup guidance, Claude model-routing rules, rollout checks, and conflict warnings.
+This plugin is an H5G wrapper around upstream RTK. RTK is the shell-output reduction engine; this skill provides H5G setup guidance, compact TLDR output guidance, Claude model-routing rules, rollout checks, and conflict warnings.
 
 RTK is not vendored here and this plugin does not fork RTK. Users install RTK separately, then run the wrapper's setup or doctor scripts to verify Claude Code integration.
 
@@ -16,6 +16,7 @@ When invoked, identify:
 - Whether the user is using Claude Code, Claude Desktop/Cowork, Cursor, or automation.
 - Whether RTK is installed and on `PATH`.
 - Whether Claude Code already has token-saver or other `PreToolUse` hooks.
+- Whether compact TLDR replies would reduce generated output without hiding safety or verification details.
 - Whether the task is small enough for `haiku` or `sonnet` instead of `opus`.
 - Whether context is near 70% or 85%.
 
@@ -43,9 +44,20 @@ Do not hide important output from the user. If RTK compacts a command and the ta
 - Prefer specific file/symbol searches over broad repository reads.
 - Use concise subagent handoffs for noisy exploration.
 
+## Compact TLDR Output
+
+Compact TLDR output reduces generated response tokens and future transcript size by keeping replies professional, TLDR-first, and safety-aware. It does not filter shell output and does not summarize existing context.
+
+- RTK reduces noisy shell-output input/context tokens in Claude Code.
+- Compact TLDR reduces generated assistant output tokens.
+- `/compact` summarizes existing conversation context when it is getting full.
+
+For detailed compact-output rules and templates, read `COMPACT_OUTPUT.md`.
+
 For detailed references, read:
 
 - `RTK_SETUP.md`
 - `MODEL_ROUTING.md`
 - `CONTEXT_HYGIENE.md`
+- `COMPACT_OUTPUT.md`
 - `TROUBLESHOOTING.md`
