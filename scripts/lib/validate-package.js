@@ -23,7 +23,8 @@ function walk(root, relative = '') {
 
 function validatePackage(root) {
   const files = walk(root);
-  const forbidden = files.filter((file) => /\.(zip|plugin)$/i.test(file) || file === '.env' || file.startsWith('.env.'));
+  const nestedArchives = files.filter((file) => /\.(zip|plugin)$/i.test(file));
+  const forbidden = files.filter((file) => nestedArchives.includes(file) || file === '.env' || file.startsWith('.env.'));
   if (forbidden.length > 0) {
     throw new Error(`Forbidden package files: ${forbidden.join(', ')}`);
   }
@@ -32,8 +33,15 @@ function validatePackage(root) {
     '.claude-plugin/plugin.json',
     'skills/rtk-token-saver/SKILL.md',
     'skills/rtk-token-saver/COMPACT_OUTPUT.md',
+    'skills/rtk-token-saver/CONTEXT_HYGIENE.md',
+    'skills/rtk-token-saver/MODEL_ROUTING.md',
     'skills/rtk-token-saver/RTK_SETUP.md',
+    'skills/rtk-token-saver/TROUBLESHOOTING.md',
     'output-styles/compact-tldr.md',
+    'hooks/hooks.json',
+    'hooks/session-start.js',
+    'hooks/pre-tool-use.js',
+    'hooks/lib/rtk-hooks.js',
     'scripts/lib/doctor.js',
     'scripts/lib/install-rtk.js',
     'scripts/lib/setup.js',
@@ -49,7 +57,7 @@ function validatePackage(root) {
   return {
     fileCount: files.length,
     requiredPresent: true,
-    nestedArchiveCount: 0
+    nestedArchiveCount: nestedArchives.length
   };
 }
 

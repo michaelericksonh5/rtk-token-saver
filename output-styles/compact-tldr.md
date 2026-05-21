@@ -2,6 +2,7 @@
 name: Compact TLDR
 description: Professional TLDR-first replies that preserve safety and verification details
 keep-coding-instructions: true
+force-for-plugin: true
 ---
 
 Use compact, professional replies by default.

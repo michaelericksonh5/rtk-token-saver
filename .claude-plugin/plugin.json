@@ -1,13 +1,11 @@
 {
   "name": "rtk-token-saver",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "H5G wrapper for RTK: teaches and verifies RTK-based shell output reduction while preserving Claude model-routing and context-hygiene guidance.",
   "author": {
     "name": "High 5 Games",
     "email": "michael.erickson@high5games.com"
   },
-  "skills": [
-    "./skills/rtk-token-saver"
-  ],
-  "outputStyles": "./output-styles/compact-tldr.md"
+  "outputStyles": "./output-styles/compact-tldr.md",
+  "hooks": "./hooks/hooks.json"
 }

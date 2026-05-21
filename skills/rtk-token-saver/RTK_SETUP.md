@@ -1,20 +1,24 @@
 # RTK Setup
 
-RTK is the engine. This H5G plugin teaches and verifies RTK; it does not vendor or fork RTK.
+RTK is the engine. This H5G plugin checks or installs pinned RTK for Claude Code, wraps selected noisy Bash commands when RTK is available, and does not vendor or fork RTK.
 
 Upstream repo: https://github.com/rtk-ai/rtk
 
 ## Recommended Rollout
 
 1. Pilot on one developer machine.
-2. Clone `https://github.com/michaelericksonh5/rtk-token-saver` so setup scripts can be reviewed before use.
-3. Run the doctor script before changing hooks.
-4. Run `scripts/setup.ps1 -InstallRtk -MigrateTokenSaver -Apply` or `./scripts/setup.sh --install-rtk --migrate-token-saver --apply`.
-5. Run the doctor script again.
+2. Install the plugin and restart Claude Code so the `SessionStart` hook can check or install pinned RTK.
+3. Clone `https://github.com/michaelericksonh5/rtk-token-saver` if setup scripts should be reviewed or run manually.
+4. Optionally run `scripts/setup.ps1 -InstallRtk -MigrateTokenSaver -Apply` or `./scripts/setup.sh --install-rtk --migrate-token-saver --apply` for global RTK setup.
+5. Run the doctor script.
 6. Review any non-RTK `PreToolUse` hook warnings if behavior looks odd.
 7. Confirm regular H5G workflows still show enough diagnostic output.
 
 ## Claude Code Setup
+
+With the plugin enabled in Claude Code, Compact TLDR is automatic. The `SessionStart` hook checks for RTK `0.40.0`, attempts the existing checksum-verified installer when RTK is missing or wrong, writes state under `CLAUDE_PLUGIN_DATA`, and writes PATH/status information when `CLAUDE_ENV_FILE` is present. The `PreToolUse` hook wraps selected simple noisy Bash commands as `rtk <command>` and skips unsafe/chained commands. Hooks fail open.
+
+Manual setup remains available when a user wants to preinstall or inspect RTK.
 
 To install RTK `0.40.0` into a user-local bin directory and update user PATH where possible:
 
@@ -54,13 +58,13 @@ On macOS/Linux:
 ./scripts/setup.sh --install-rtk --migrate-token-saver --apply
 ```
 
-The setup script checks for `rtk`, legacy `token-saver` hooks, other non-RTK `PreToolUse` hooks, the approved RTK version, and the approved user-local install directory. It can migrate legacy H5G token-saver hooks while preserving unrelated hooks. It runs RTK's Claude Code initialization only when explicitly requested. Use `--force` / `-Force` only after manually reviewing warnings.
+The setup script checks for `rtk`, legacy `token-saver` hooks, other non-RTK `PreToolUse` hooks, the approved RTK version, and the approved user-local install directory. It can migrate legacy H5G token-saver hooks while preserving unrelated hooks. It runs RTK's global Claude Code initialization only when explicitly requested. Use `--force` / `-Force` only after manually reviewing warnings.
 
 The RTK installer downloads the pinned `v0.40.0` GitHub release asset for the user's OS/CPU, verifies SHA-256, and installs only the `rtk` binary into a user-local bin directory. It does not require admin privileges with the default install location.
 
-## Why Setup Is Opt-In
+## Why Global Setup Is Opt-In
 
-RTK modifies global Claude Code hook settings and proxies shell commands. That can be very useful, but it should be a deliberate per-machine choice rather than a side effect of installing a marketplace plugin.
+RTK global setup modifies Claude Code hook settings. The plugin has its own bundled fail-open hooks, so global setup remains a deliberate per-machine choice rather than a requirement for normal plugin behavior.
 
 ## Token Saver Replacement
 

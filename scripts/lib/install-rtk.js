@@ -105,7 +105,9 @@ function extractArchive(archivePath, destination) {
       '-ExecutionPolicy',
       'Bypass',
       '-Command',
-      `Expand-Archive -LiteralPath ${JSON.stringify(archivePath)} -DestinationPath ${JSON.stringify(destination)} -Force`
+      'param($ArchivePath, $DestinationPath) Expand-Archive -LiteralPath $ArchivePath -DestinationPath $DestinationPath -Force',
+      archivePath,
+      destination
     ]);
     return;
   }
@@ -128,8 +130,8 @@ function findBinary(root, binaryName) {
 
 function updateWindowsUserPath(installDir) {
   const script = [
+    "param($dir)",
     "$ErrorActionPreference = 'Stop'",
-    `$dir = ${JSON.stringify(installDir)}`,
     "$path = [Environment]::GetEnvironmentVariable('Path', 'User')",
     "if ([string]::IsNullOrWhiteSpace($path)) { $path = '' }",
     "$parts = $path -split ';' | Where-Object { $_ }",
@@ -141,7 +143,7 @@ function updateWindowsUserPath(installDir) {
   const shell = spawnSync('pwsh', ['-NoProfile', '-Command', '$PSVersionTable.PSVersion'], { windowsHide: true }).status === 0
     ? 'pwsh'
     : 'powershell';
-  run(shell, ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script]);
+  run(shell, ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script, installDir]);
 }
 
 function updateUnixShellPath(installDir) {
@@ -187,6 +189,7 @@ async function installRtk(options = {}) {
   const destination = path.join(installDir, asset.binary);
   fs.copyFileSync(binaryPath, destination);
   fs.chmodSync(destination, 0o755);
+  const binarySha256 = sha256(destination);
 
   const wasOnPath = isOnPath(installDir);
   if (!wasOnPath) {
@@ -202,6 +205,7 @@ async function installRtk(options = {}) {
     version: RTK_VERSION,
     asset: asset.name,
     binaryPath: destination,
+    binarySha256,
     installDir,
     pathUpdated: !wasOnPath
   };

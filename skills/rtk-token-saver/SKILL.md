@@ -7,15 +7,15 @@ description: Guide Claude users through RTK-based token reduction, compact TLDR 
 
 This plugin is an H5G wrapper around upstream RTK. RTK is the shell-output reduction engine; this skill provides H5G setup guidance, compact TLDR output guidance, Claude model-routing rules, rollout checks, and conflict warnings.
 
-RTK is not vendored here and this plugin does not fork RTK. Users install RTK separately, then run the wrapper's setup or doctor scripts to verify Claude Code integration.
+RTK is not vendored here and this plugin does not fork RTK. In Claude Code, plugin hooks check or install pinned RTK automatically and wrap selected noisy Bash commands when RTK is available. The hooks fail open so normal commands keep running if RTK cannot be installed or checked.
 
 ## First Response Checklist
 
 When invoked, identify:
 
 - Whether the user is using Claude Code, Claude Desktop/Cowork, Cursor, or automation.
-- Whether RTK is installed and on `PATH`.
-- Whether Claude Code already has token-saver or other `PreToolUse` hooks.
+- Whether the Claude Code plugin hook reported RTK installed, available, or unavailable.
+- Whether Claude Code already has legacy token-saver or other `PreToolUse` hooks that might conflict.
 - Whether compact TLDR replies would reduce generated output without hiding safety or verification details.
 - Whether the task is small enough for `haiku` or `sonnet` instead of `opus`.
 - Whether context is near 70% or 85%.
@@ -34,6 +34,8 @@ If Opus is active for a small task, recommend switching to `sonnet` or `haiku` b
 
 Use RTK for noisy shell workflows such as test runs, package manager output, Git/GitHub output, Docker/Kubernetes output, logs, and other verbose command results.
 
+In Claude Code, the plugin wraps selected simple noisy Bash command prefixes as `rtk <command>`. It skips already wrapped commands, chained commands, pipes, redirection, and commands outside the selected prefixes.
+
 Do not hide important output from the user. If RTK compacts a command and the task depends on exact details, ask for the full RTK log path or rerun the command with raw output redirected to a file.
 
 ## Context Hygiene
@@ -49,8 +51,10 @@ Do not hide important output from the user. If RTK compacts a command and the ta
 Compact TLDR output reduces generated response tokens and future transcript size by keeping replies professional, TLDR-first, and safety-aware. It does not filter shell output and does not summarize existing context.
 
 - RTK reduces noisy shell-output input/context tokens in Claude Code.
-- Compact TLDR reduces generated assistant output tokens.
+- Compact TLDR is forced by this plugin in Claude Code and reduces generated assistant output tokens.
 - `/compact` summarizes existing conversation context when it is getting full.
+
+In Claude Desktop/Cowork, RTK and Compact TLDR remain advisory unless that surface honors Claude Code plugin hooks and output styles.
 
 For detailed compact-output rules and templates, read `COMPACT_OUTPUT.md`.
 

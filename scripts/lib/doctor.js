@@ -145,11 +145,18 @@ function migrateTokenSaverHooks(options = {}) {
 function runDoctor(options = {}) {
   const home = options.home || os.homedir();
   const settingsPath = path.join(home, '.claude', 'settings.json');
+  const pluginRoot = path.resolve(__dirname, '..', '..');
+  const pluginManifestPath = path.join(pluginRoot, '.claude-plugin', 'plugin.json');
+  const pluginManifest = readJson(pluginManifestPath) || {};
+  const pluginHooksPath = pluginManifest.hooks ? path.join(pluginRoot, pluginManifest.hooks) : '';
+  const pluginHooks = readJson(pluginHooksPath) || {};
   const settings = readJson(settingsPath) || {};
   const preToolEntries = hookEntries(settings, 'PreToolUse');
   const preToolCommands = preToolEntries.map((entry) => entry.command);
   const postToolCommands = hookCommands(settings, 'PostToolUse');
   const rtkHooks = preToolCommands.filter((command) => /\brtk\b/i.test(command));
+  const pluginPreToolCommands = hookCommands(pluginHooks, 'PreToolUse');
+  const pluginHasRtkPreToolHook = pluginPreToolCommands.some((command) => /pre-tool-use\.js\b/i.test(command));
   const tokenSaverHooks = [...preToolCommands, ...postToolCommands].filter(isLegacyTokenSaverCommand);
   const nonRtkPreToolHooks = preToolEntries
     .filter((entry) => !/\brtk\b/i.test(entry.command))
@@ -168,10 +175,10 @@ function runDoctor(options = {}) {
     check('RTK install path approved', rtkPath.length > 0 && samePath(rtkInstallDir, approvedInstallDir), `Expected ${approvedInstallDir}; found ${rtkInstallDir || 'unknown'}`),
     check('Claude Code CLI available', commandExists('claude'), 'Run `claude --version`.'),
     check('Claude settings file exists', fs.existsSync(settingsPath), settingsPath),
-    check('RTK PreToolUse hook configured', rtkHooks.length > 0, rtkHooks.join(' | ') || 'No RTK PreToolUse hook found.'),
+    check('RTK PreToolUse hook configured', rtkHooks.length > 0 || pluginHasRtkPreToolHook, [...rtkHooks, ...pluginPreToolCommands].join(' | ') || 'No RTK PreToolUse hook found.'),
     check('Legacy token-saver hooks absent', tokenSaverHooks.length === 0, tokenSaverHooks.join(' | ') || 'No legacy token-saver hooks found.'),
     check('Other PreToolUse hooks reviewed', nonRtkPreToolHooks.length === 0, nonRtkPreToolHooks.join(' | ') || 'No non-RTK PreToolUse command hooks found.'),
-    check('Wrapper plugin has no bundled hook', !fs.existsSync(path.resolve(__dirname, '..', '..', 'hooks', 'hooks.json')), 'This wrapper should not install a competing hook.')
+    check('Wrapper plugin hooks configured', pluginManifest.hooks === './hooks/hooks.json' && fs.existsSync(pluginHooksPath), pluginManifest.hooks || 'No plugin hooks configured.')
   ];
 
   return {

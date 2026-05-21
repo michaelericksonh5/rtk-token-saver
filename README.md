@@ -1,21 +1,21 @@
 # rtk-token-saver
 
-`rtk-token-saver` is an H5G Claude plugin wrapper for [RTK](https://github.com/rtk-ai/rtk). RTK remains the engine for shell-output reduction; this plugin teaches, verifies, and documents how H5G users should adopt it safely.
+`rtk-token-saver` is an H5G Claude Code plugin wrapper for [RTK](https://github.com/rtk-ai/rtk). When the plugin is enabled in Claude Code, Compact TLDR replies are forced, approved RTK `0.40.0` is checked or installed when needed, and selected noisy Bash commands are wrapped with RTK automatically.
 
 This is **not a fork** of RTK. Fork only if H5G needs code changes in RTK itself.
 
 ## What This Plugin Adds
 
 - `/rtk-token-saver` skill for RTK usage, compact TLDR replies, model routing, and context hygiene.
-- Optional Claude Code `Compact TLDR` output style for professional TLDR-first replies.
-- Setup scripts that can install pinned RTK into a user-local bin directory and run RTK's Claude Code initialization only after explicit opt-in.
+- Forced Claude Code `Compact TLDR` output style for professional TLDR-first replies.
+- Plugin hooks that check or install pinned RTK into a user-local bin directory and wrap selected noisy Bash commands with RTK.
+- Setup scripts that can still install pinned RTK into a user-local bin directory and run RTK's Claude Code initialization after explicit opt-in.
 - Doctor scripts that check RTK install state, Claude Code hooks, and legacy token-saver conflicts.
 - H5G rollout docs for replacing the old `token-saver` marketplace entry.
-- No bundled Claude hook, so marketplace install does not compete with RTK's own hook.
 
 ## What RTK Adds
 
-RTK can reduce noisy shell-output input/context tokens in Claude Code from test runs, package managers, Git/GitHub commands, Docker/Kubernetes output, logs, and other verbose command results. That is more robust than H5G's original `token-saver` hook.
+RTK can reduce noisy shell-output input/context tokens in Claude Code from test runs, package managers, Git/GitHub commands, Docker/Kubernetes output, logs, and other verbose command results. This plugin wraps conservative command prefixes such as `npm test`, `pytest`, `cargo test`, `go test`, selected `git` inspection commands, `docker` diagnostics, and `kubectl` diagnostics. Commands that are already wrapped, chained, piped, redirected, or otherwise unsafe to rewrite run unchanged.
 
 ## Compact TLDR Mode
 
@@ -24,9 +24,9 @@ Compact TLDR mode is separate from RTK. RTK filters shell-output input/context t
 The plugin ships:
 
 - `skills/rtk-token-saver/COMPACT_OUTPUT.md` with professional TLDR rules, templates, and safety escape hatches.
-- `output-styles/compact-tldr.md`, an optional Claude Code output style users can select from `/config`.
+- `output-styles/compact-tldr.md`, a forced Claude Code output style applied when the plugin is enabled.
 
-Compact TLDR mode is not a Claude hook and does not replace `/compact`. `/compact` summarizes existing conversation context; compact replies keep new replies shorter. In Claude Desktop/Cowork, the skill can advise compact behavior, but enforcement depends on that client's support for plugin output styles or user instructions.
+Compact TLDR mode is not the RTK shell hook and does not replace `/compact`. `/compact` summarizes existing conversation context; compact replies keep new replies shorter. In Claude Desktop/Cowork, the skill can advise compact behavior, but enforcement depends on that client's support for plugin output styles or user instructions.
 
 ## Install From Marketplace
 
@@ -35,7 +35,7 @@ Compact TLDR mode is not a Claude hook and does not replace `/compact`. `/compac
 /plugin install rtk-token-saver@h5g-plugins
 ```
 
-Then invoke:
+Claude Code will load the forced Compact TLDR output style and bundled hooks when the plugin is enabled. You can still invoke the skill for guidance:
 
 ```text
 /rtk-token-saver
@@ -50,7 +50,9 @@ git clone https://github.com/michaelericksonh5/rtk-token-saver
 cd rtk-token-saver
 ```
 
-Marketplace install gives Claude the `/rtk-token-saver` skill. The setup scripts are intentionally run from a checked-out repo so users can review them before changing global Claude Code hooks.
+Marketplace install gives Claude Code the `/rtk-token-saver` skill, forced Compact TLDR style, and fail-open hooks. On `SessionStart`, the hook checks for approved RTK and attempts the existing checksum-verified installer if RTK is missing or the wrong version. If `CLAUDE_ENV_FILE` is present, the hook writes RTK/PATH status for Claude Code to pick up. Hook state is stored under `CLAUDE_PLUGIN_DATA`.
+
+The setup scripts remain available from a checked-out repo for users who want to review or preinstall RTK manually before plugin use.
 
 To install approved RTK `0.40.0` into a user-local bin directory and update user PATH where possible:
 
@@ -94,7 +96,7 @@ On macOS/Linux:
 ./scripts/setup.sh --apply --force
 ```
 
-The installer downloads RTK `v0.40.0` from GitHub Releases, verifies a pinned SHA-256 digest, installs only `rtk` / `rtk.exe` into `~/.local/bin`, and updates user PATH where possible. It does not require admin privileges when using the default user-local location.
+The installer downloads RTK `v0.40.0` from GitHub Releases, verifies a pinned SHA-256 digest, installs only `rtk` / `rtk.exe` into `~/.local/bin`, and updates user PATH where possible. It does not require admin privileges when using the default user-local location. The plugin hooks reuse this installer; they do not add unpinned downloads, remote pipe-to-shell, or vendored binaries.
 
 ## Doctor
 
@@ -109,10 +111,10 @@ The doctor checks:
 - RTK resolves from the approved user-local install directory.
 - Claude Code CLI is installed.
 - `~/.claude/settings.json` exists.
-- An RTK `PreToolUse` hook is configured.
+- RTK `PreToolUse` integration is available through global settings or the plugin hook.
 - Legacy H5G `token-saver` hooks are absent.
 - Other non-RTK `PreToolUse` hooks are absent or reviewed.
-- This wrapper has no bundled competing hook.
+- This wrapper has bundled fail-open plugin hooks configured.
 
 ## Replacing token-saver
 
@@ -136,8 +138,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\validate-package.ps1
 
 ## Caveats
 
-- RTK modifies global Claude Code hook settings.
+- The plugin hook wraps only selected simple Bash commands and fails open.
 - RTK proxies shell commands, so this wrapper installs only pinned RTK `0.40.0` with checksum verification.
-- Compact TLDR output is optional and should expand when safety, exact errors, or user requests require detail.
-- Cowork/Desktop users get guidance only; local RTK hook behavior is for Claude Code or local developer-machine workflows, and compact-output behavior is advisory unless supported by the client.
+- Compact TLDR output is forced in Claude Code by this plugin and should expand when safety, exact errors, or user requests require detail.
+- Cowork/Desktop users get guidance only unless that surface honors Claude Code plugin hooks and output styles.
 - Full command output may still exist in RTK's local logs when RTK preserves raw output.

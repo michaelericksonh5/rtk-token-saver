@@ -4,29 +4,29 @@
 
 The marketplace now lists `rtk-token-saver` instead of H5G `token-saver`. Keep the original `token_saver` GitHub repo intact for rollback and future reuse.
 
-Do not fork RTK unless H5G needs code-level changes. Start with this wrapper plus approved RTK `0.40.0` and the optional Compact TLDR output style.
+Do not fork RTK unless H5G needs code-level changes. Start with this wrapper plus approved RTK `0.40.0`, forced Compact TLDR output style, and fail-open plugin hooks.
 
 ## Pilot Steps
 
 1. Pick one developer machine.
 2. Install the `rtk-token-saver` plugin from the H5G marketplace.
-3. Clone `https://github.com/michaelericksonh5/rtk-token-saver` to run setup and doctor scripts.
-4. Run `scripts/setup.ps1 -InstallRtk -MigrateTokenSaver -Apply`.
-5. Restart Claude Code.
+3. Restart Claude Code and confirm the `SessionStart` hook reports RTK status.
+4. Clone `https://github.com/michaelericksonh5/rtk-token-saver` if you want to run setup and doctor scripts manually.
+5. Optionally run `scripts/setup.ps1 -InstallRtk -MigrateTokenSaver -Apply` for preflight/global RTK setup.
 6. Run `scripts/doctor.ps1`.
 7. Review any non-RTK `PreToolUse` hook warnings if behavior looks odd.
 8. Run normal H5G workflows: slot art, Spine animation, AI video, skill auditing, and regular coding/test loops.
 9. Confirm RTK reduces noisy output without hiding critical failures.
-10. Optionally select `Compact TLDR` in Claude Code `/config` and confirm replies stay concise without losing safety, exact errors, or verification status.
+10. Confirm Compact TLDR replies are automatic in Claude Code without losing safety, exact errors, or verification status.
 
 ## Compact TLDR Rollout
 
-Compact TLDR mode is a response-style feature, not a shell hook. Roll it out as an optional Claude Code output style before making it a team default.
+Compact TLDR mode is a response-style feature, not the RTK shell wrapper. It is forced by the plugin in Claude Code.
 
 - RTK can reduce shell-output input/context tokens in Claude Code.
 - Compact replies reduce generated assistant output tokens and future transcript size.
 - `/compact` remains the tool for summarizing existing conversation context.
-- Desktop/Cowork compact behavior is advisory skill guidance unless the client supports the shipped output style or equivalent user settings.
+- Desktop/Cowork compact behavior is advisory skill guidance unless the client honors the shipped Claude Code output style or equivalent user settings.
 
 Keep escape hatches explicit: users should ask for full detail whenever debugging, security review, production operations, or exact reproduction steps need more context.
 
@@ -47,10 +47,10 @@ Removing `token-saver` from the marketplace does not uninstall existing local se
 
 ## Rollback
 
-If RTK causes conflicts, remove the RTK hook from `~/.claude/settings.json` or restore RTK's settings backup. Then reinstall or re-add the old `token-saver` marketplace entry if needed.
+If RTK causes conflicts, disable or uninstall the `rtk-token-saver` plugin to remove the plugin hooks. If you also ran global setup, remove the RTK hook from `~/.claude/settings.json` or restore RTK's settings backup. Then reinstall or re-add the old `token-saver` marketplace entry if needed.
 
 ## Admin Notes
 
-RTK is a local CLI/hook engine. Team-wide rollout should use approved RTK `0.40.0`, installed through this wrapper's checksum-verified user-local installer or another internally reviewed process.
+RTK is a local CLI/hook engine. Team-wide rollout should use approved RTK `0.40.0`, installed through this wrapper's checksum-verified user-local installer, the plugin `SessionStart` hook, or another internally reviewed process.
 
-Compact TLDR mode does not require `SessionStart`, `UserPromptSubmit`, or `PreToolUse` hooks. Do not add compact-output hooks during rollout; use the shipped output style or skill guidance instead.
+The plugin hooks are fail-open. `SessionStart` checks or installs RTK and writes state under `CLAUDE_PLUGIN_DATA`; `PreToolUse` wraps only selected simple Bash commands and skips already wrapped, chained, piped, or redirected commands.
