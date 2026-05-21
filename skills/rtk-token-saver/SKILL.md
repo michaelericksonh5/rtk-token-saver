@@ -15,6 +15,7 @@ When invoked, identify:
 
 - Whether the user is using Claude Code, Claude Desktop/Cowork, Cursor, or automation.
 - Whether the Claude Code plugin hook reported RTK installed, available, or unavailable.
+- Whether `~/.claude/ENV.md` has current per-user shell/OS versions for command authoring.
 - Whether Claude Code already has legacy token-saver or other `PreToolUse` hooks that might conflict.
 - Whether compact TLDR replies would reduce generated output without hiding safety or verification details.
 - Whether the task is small enough for `haiku` or `sonnet` instead of `opus`.
@@ -55,6 +56,10 @@ Compact TLDR output reduces generated response tokens and future transcript size
 - `/compact` summarizes existing conversation context when it is getting full.
 
 In Claude Desktop/Cowork, RTK and Compact TLDR remain advisory unless that surface honors Claude Code plugin hooks and output styles.
+
+## Environment Awareness
+
+On Claude Code `SessionStart`, the plugin detects the user's current OS and shell versions and writes `~/.claude/ENV.md`, then ensures `@ENV.md` is referenced from global `~/.claude/CLAUDE.md`. Treat those versions as per-user runtime facts; never hardcode one user's PowerShell, CMD, Bash, Node, or OS versions into shared docs.
 
 For detailed compact-output rules and templates, read `COMPACT_OUTPUT.md`.
 

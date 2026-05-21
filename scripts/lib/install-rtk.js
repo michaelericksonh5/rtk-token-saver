@@ -94,24 +94,50 @@ function run(command, args) {
   return result;
 }
 
+function psSingleQuote(value) {
+  return `'${String(value).replace(/'/g, "''")}'`;
+}
+
+function firstExisting(paths) {
+  return paths.find((filePath) => filePath && fs.existsSync(filePath));
+}
+
+function trustedWindowsPowerShell() {
+  const programFiles = 'C:\\Program Files';
+  const pwshRoot = path.join(programFiles, 'PowerShell');
+  const pwshVersions = fs.existsSync(pwshRoot)
+    ? fs.readdirSync(pwshRoot, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => path.join(pwshRoot, entry.name, 'pwsh.exe'))
+    : [];
+  const shell = firstExisting([
+    path.join(programFiles, 'PowerShell', '7', 'pwsh.exe'),
+    ...pwshVersions,
+    path.join('C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
+  ]);
+  if (!shell) throw new Error('Could not find trusted PowerShell at the standard Windows install paths');
+  return shell;
+}
+
+function trustedTar() {
+  const tar = firstExisting(['/usr/bin/tar', '/bin/tar']);
+  if (!tar) throw new Error('Could not find trusted tar at /usr/bin/tar or /bin/tar');
+  return tar;
+}
+
 function extractArchive(archivePath, destination) {
   fs.mkdirSync(destination, { recursive: true });
   if (archivePath.endsWith('.zip')) {
-    const shell = process.platform === 'win32' && spawnSync('pwsh', ['-NoProfile', '-Command', '$PSVersionTable.PSVersion'], { windowsHide: true }).status === 0
-      ? 'pwsh'
-      : 'powershell';
-    run(shell, [
+    run(trustedWindowsPowerShell(), [
       '-NoProfile',
       '-ExecutionPolicy',
       'Bypass',
       '-Command',
-      'param($ArchivePath, $DestinationPath) Expand-Archive -LiteralPath $ArchivePath -DestinationPath $DestinationPath -Force',
-      archivePath,
-      destination
+      `Expand-Archive -LiteralPath ${psSingleQuote(archivePath)} -DestinationPath ${psSingleQuote(destination)} -Force`
     ]);
     return;
   }
-  run('tar', ['-xzf', archivePath, '-C', destination]);
+  run(trustedTar(), ['-xzf', archivePath, '-C', destination]);
 }
 
 function findBinary(root, binaryName) {
@@ -130,8 +156,8 @@ function findBinary(root, binaryName) {
 
 function updateWindowsUserPath(installDir) {
   const script = [
-    "param($dir)",
     "$ErrorActionPreference = 'Stop'",
+    `$dir = ${psSingleQuote(installDir)}`,
     "$path = [Environment]::GetEnvironmentVariable('Path', 'User')",
     "if ([string]::IsNullOrWhiteSpace($path)) { $path = '' }",
     "$parts = $path -split ';' | Where-Object { $_ }",
@@ -140,10 +166,7 @@ function updateWindowsUserPath(installDir) {
     "  [Environment]::SetEnvironmentVariable('Path', $newPath, 'User')",
     '}'
   ].join('; ');
-  const shell = spawnSync('pwsh', ['-NoProfile', '-Command', '$PSVersionTable.PSVersion'], { windowsHide: true }).status === 0
-    ? 'pwsh'
-    : 'powershell';
-  run(shell, ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script, installDir]);
+  run(trustedWindowsPowerShell(), ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script]);
 }
 
 function updateUnixShellPath(installDir) {

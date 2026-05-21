@@ -9,7 +9,8 @@ const root = path.resolve(__dirname, '..');
 const { isLegacyTokenSaverCommand, migrateTokenSaverHooks, parseRtkVersion, runDoctor } = require('../scripts/lib/doctor');
 const { ASSETS, RTK_VERSION, defaultInstallDir } = require('../scripts/lib/install-rtk');
 const { validatePackage } = require('../scripts/lib/validate-package');
-const { handlePreToolUse, handleSessionStart } = require('../hooks/lib/rtk-hooks');
+const { handlePreToolUse, handleSessionStart, updateGlobalEnvironmentMemory } = require('../hooks/lib/rtk-hooks');
+const { hasGlobalRtkHook, installGlobalRtkHook } = require('../scripts/lib/setup');
 
 test('plugin manifest registers forced Compact TLDR and default hooks', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(root, '.claude-plugin', 'plugin.json'), 'utf8'));
@@ -118,6 +119,39 @@ test('migration removes only legacy token-saver hooks and backs up settings', ()
   assert.strictEqual(settings.keep, true);
 });
 
+test('global RTK hook fallback patches settings idempotently', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'rtk-token-saver-test-'));
+  const claudeDir = path.join(home, '.claude');
+  const settingsPath = path.join(claudeDir, 'settings.json');
+  fs.mkdirSync(claudeDir, { recursive: true });
+  fs.writeFileSync(settingsPath, JSON.stringify({
+    hooks: {
+      PreToolUse: [
+        {
+          matcher: 'Bash',
+          hooks: [
+            { type: 'command', command: 'node ~/.claude/security/pretool-filter.js', timeout: 10 }
+          ]
+        }
+      ]
+    },
+    keep: true
+  }, null, 2));
+
+  const first = installGlobalRtkHook({ settingsPath });
+  const second = installGlobalRtkHook({ settingsPath });
+  const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+  const commands = settings.hooks.PreToolUse.flatMap((group) => group.hooks.map((hook) => hook.command));
+
+  assert.strictEqual(first.changed, true);
+  assert.ok(fs.existsSync(first.backupPath));
+  assert.strictEqual(second.changed, false);
+  assert.strictEqual(settings.keep, true);
+  assert.strictEqual(hasGlobalRtkHook(settings), true);
+  assert.strictEqual(commands.filter((command) => command === 'rtk hook claude').length, 1);
+  assert.match(commands.join(' | '), /security\/pretool-filter/);
+});
+
 test('legacy token-saver detection is path-specific', () => {
   assert.strictEqual(isLegacyTokenSaverCommand('node ~/.claude/token-saver/lib/pretool-filter.js'), true);
   assert.strictEqual(isLegacyTokenSaverCommand('pwsh ~/.claude/hooks/token-saver-filter-output.ps1'), true);
@@ -223,11 +257,17 @@ test('PreToolUse fails open when RTK install is unavailable', async () => {
 
 test('SessionStart reports setup status with mocked installer and env file', async () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rtk-token-saver-test-'));
+  const claudeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rtk-token-saver-claude-'));
   const installDir = path.join(dataDir, 'bin');
   const envFile = path.join(dataDir, 'claude.env');
   const result = await handleSessionStart({
     dataDir,
+    claudeDir,
     envFile,
+    environmentCommands: {
+      pwsh: 'C:\\trusted\\pwsh.exe',
+      cmd: 'C:\\trusted\\cmd.exe'
+    },
     installer: {
       RTK_VERSION,
       defaultInstallDir: () => installDir,
@@ -241,19 +281,74 @@ test('SessionStart reports setup status with mocked installer and env file', asy
         pathUpdated: true
       })
     },
-    commandRunner: (command) => command === path.join(installDir, process.platform === 'win32' ? 'rtk.exe' : 'rtk')
-      ? { status: 0, stdout: `rtk ${RTK_VERSION}\n`, stderr: '' }
-      : { status: 1, stdout: '', stderr: 'missing' }
+    commandRunner: (command, args) => {
+      if (command === path.join(installDir, process.platform === 'win32' ? 'rtk.exe' : 'rtk')) {
+        return { status: 0, stdout: `rtk ${RTK_VERSION}\n`, stderr: '' };
+      }
+      if (command === 'C:\\trusted\\pwsh.exe' && args.some((arg) => String(arg).includes('ConvertTo-Json -Compress'))) {
+        return { status: 0, stdout: '{"version":"7.6.0","edition":"Core","os":"TestOS","platform":"Win32NT"}', stderr: '' };
+      }
+      if (command === 'C:\\trusted\\cmd.exe') {
+        return { status: 0, stdout: 'Microsoft Windows [Version 10.0.1]', stderr: '' };
+      }
+      return { status: 1, stdout: '', stderr: 'missing' };
+    }
   });
 
   const state = JSON.parse(fs.readFileSync(path.join(dataDir, 'rtk-token-saver-state.json'), 'utf8'));
   const env = fs.readFileSync(envFile, 'utf8');
+  const envMd = fs.readFileSync(path.join(claudeDir, 'ENV.md'), 'utf8');
+  const claudeMd = fs.readFileSync(path.join(claudeDir, 'CLAUDE.md'), 'utf8');
   assert.strictEqual(result.hookSpecificOutput.hookEventName, 'SessionStart');
   assert.match(result.hookSpecificOutput.additionalContext, /Compact TLDR is forced/);
   assert.match(result.hookSpecificOutput.additionalContext, /RTK 0\.40\.0 installed/);
+  assert.match(result.hookSpecificOutput.additionalContext, /Environment versions updated/);
   assert.strictEqual(state.status, 'installed');
   assert.match(env, /export RTK_TOKEN_SAVER_STATUS='installed'/);
   assert.match(env, /export PATH=/);
+  assert.match(envMd, /PowerShell Core/);
+  assert.match(envMd, /7\.6\.0/);
+  assert.match(envMd, /CMD/);
+  assert.strictEqual(claudeMd.trim(), '@ENV.md');
+});
+
+test('environment memory detects versions per user and preserves existing CLAUDE.md', () => {
+  const claudeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rtk-token-saver-claude-'));
+  fs.writeFileSync(path.join(claudeDir, 'CLAUDE.md'), '@RTK.md\n');
+
+  const result = updateGlobalEnvironmentMemory({
+    claudeDir,
+    environmentCommands: {
+      pwsh: 'C:\\trusted\\pwsh.exe',
+      powershell: 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+      bash: 'C:\\Program Files\\Git\\bin\\bash.exe'
+    },
+    commandRunner: (command, args) => {
+      if (command === 'C:\\trusted\\pwsh.exe' && args.some((arg) => String(arg).includes('ConvertTo-Json -Compress'))) {
+        return { status: 0, stdout: '{"version":"7.5.4","edition":"Core","os":"UserOS","platform":"Unix"}', stderr: '' };
+      }
+      if (command === 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe') {
+        return { status: 0, stdout: '5.1.22621.1', stderr: '' };
+      }
+      if (command === 'C:\\Program Files\\Git\\bin\\bash.exe') {
+        return { status: 0, stdout: 'GNU bash, version 5.2.0-test', stderr: '' };
+      }
+      return { status: 1, stdout: '', stderr: 'missing' };
+    }
+  });
+
+  const envMd = fs.readFileSync(result.envPath, 'utf8');
+  const claudeMd = fs.readFileSync(result.claudePath, 'utf8');
+  assert.match(envMd, /7\.5\.4/);
+  assert.match(envMd, /5\.1\.22621\.1/);
+  assert.match(envMd, /GNU bash/);
+  assert.match(envMd, /do not assume they match other users/i);
+  assert.match(claudeMd, /@RTK\.md/);
+  assert.match(claudeMd, /@ENV\.md/);
+
+  const second = updateGlobalEnvironmentMemory({ claudeDir, commandRunner: () => ({ status: 1, stdout: '', stderr: '' }) });
+  const secondClaudeMd = fs.readFileSync(second.claudePath, 'utf8');
+  assert.strictEqual((secondClaudeMd.match(/@ENV\.md/g) || []).length, 1);
 });
 
 test('RTK installer pins reviewed release assets', () => {

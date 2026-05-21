@@ -10,6 +10,7 @@ RTK has a high-privilege surface because it integrates with shell-command execut
 - This wrapper does not auto-modify Claude settings during marketplace install.
 - Compact TLDR output is shipped as a forced Claude Code output style, not as a shell-output hook.
 - This wrapper adds fail-open `SessionStart` and `PreToolUse` plugin hooks. `SessionStart` checks or installs pinned RTK and writes status under `CLAUDE_PLUGIN_DATA`; `PreToolUse` only rewrites selected simple Bash commands to `rtk <command>`.
+- `SessionStart` also writes generated per-user environment notes to `~/.claude/ENV.md` and adds `@ENV.md` to `~/.claude/CLAUDE.md` when missing. It detects versions at runtime instead of shipping hardcoded shell versions.
 - The `PreToolUse` hook skips commands that are already RTK-wrapped, chained, piped, redirected, or outside the selected noisy prefixes.
 - `scripts/setup.*` only applies RTK initialization when users pass `--apply` or `-Apply`.
 - Setup can migrate legacy token-saver hooks with `--migrate-token-saver` / `-MigrateTokenSaver`, backing up settings before removing only known H5G token-saver hook commands.

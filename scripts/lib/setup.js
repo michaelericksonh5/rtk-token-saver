@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 'use strict';
 
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const { spawnSync } = require('child_process');
 const { migrateTokenSaverHooks, runDoctor } = require('./doctor');
 const { installRtk } = require('./install-rtk');
@@ -10,6 +13,62 @@ function run(command, args) {
     stdio: 'inherit',
     windowsHide: true
   });
+}
+
+function settingsPath(home = os.homedir()) {
+  return path.join(home, '.claude', 'settings.json');
+}
+
+function readJson(filePath) {
+  if (!fs.existsSync(filePath)) return {};
+  return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+}
+
+function writeJson(filePath, value) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function hasGlobalRtkHook(settings) {
+  const groups = settings && settings.hooks && Array.isArray(settings.hooks.PreToolUse)
+    ? settings.hooks.PreToolUse
+    : [];
+  return groups.some((group) => {
+    const hooks = Array.isArray(group && group.hooks) ? group.hooks : [];
+    return String(group && group.matcher || '') === 'Bash'
+      && hooks.some((hook) => /\brtk\s+hook\s+claude\b/i.test(String(hook && hook.command || '')));
+  });
+}
+
+function installGlobalRtkHook(options = {}) {
+  const filePath = options.settingsPath || settingsPath(options.home);
+  const settings = readJson(filePath);
+  if (hasGlobalRtkHook(settings)) {
+    return { changed: false, settingsPath: filePath, backupPath: null };
+  }
+
+  const backupPath = fs.existsSync(filePath)
+    ? `${filePath}.rtk-token-saver-backup.${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)}`
+    : null;
+  if (backupPath) fs.copyFileSync(filePath, backupPath);
+
+  const next = { ...settings };
+  next.hooks = { ...(next.hooks || {}) };
+  const existing = Array.isArray(next.hooks.PreToolUse) ? next.hooks.PreToolUse : [];
+  next.hooks.PreToolUse = [
+    ...existing,
+    {
+      matcher: 'Bash',
+      hooks: [
+        {
+          type: 'command',
+          command: 'rtk hook claude'
+        }
+      ]
+    }
+  ];
+  writeJson(filePath, next);
+  return { changed: true, settingsPath: filePath, backupPath };
 }
 
 async function main() {
@@ -107,11 +166,21 @@ async function main() {
     console.log('Continuing with RTK setup; review hook ordering if behavior looks odd.');
   }
 
-  console.log('Running: rtk init -g');
-  const result = run('rtk', ['init', '-g']);
+  const rtkCommand = before.rtkPath || 'rtk';
+  console.log(`Running: ${rtkCommand} init -g`);
+  const result = run(rtkCommand, ['init', '-g']);
   if (result.status !== 0) return result.status || 1;
 
-  const after = runDoctor();
+  let after = runDoctor();
+  if (!hasGlobalRtkHook(readJson(after.settingsPath))) {
+    console.log('RTK did not patch Claude settings in non-interactive mode. Installing the global RTK hook fallback...');
+    const fallback = installGlobalRtkHook({ settingsPath: after.settingsPath });
+    if (fallback.changed) {
+      console.log(`Added global RTK PreToolUse hook to ${fallback.settingsPath}`);
+      if (fallback.backupPath) console.log(`Backup created: ${fallback.backupPath}`);
+    }
+    after = runDoctor();
+  }
   for (const check of after.results) {
     console.log(`${check.ok ? 'OK' : 'WARN'}  ${check.name} - ${check.detail}`);
   }
@@ -126,3 +195,8 @@ if (require.main === module) {
       process.exit(1);
     });
 }
+
+module.exports = {
+  hasGlobalRtkHook,
+  installGlobalRtkHook
+};

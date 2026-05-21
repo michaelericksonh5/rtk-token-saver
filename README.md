@@ -9,6 +9,7 @@ This is **not a fork** of RTK. Fork only if H5G needs code changes in RTK itself
 - `/rtk-token-saver` skill for RTK usage, compact TLDR replies, model routing, and context hygiene.
 - Forced Claude Code `Compact TLDR` output style for professional TLDR-first replies.
 - Plugin hooks that check or install pinned RTK into a user-local bin directory and wrap selected noisy Bash commands with RTK.
+- Session-start environment detection that writes each user's own shell/OS versions to global `~/.claude/ENV.md` and references it from `~/.claude/CLAUDE.md`.
 - Setup scripts that can still install pinned RTK into a user-local bin directory and run RTK's Claude Code initialization after explicit opt-in.
 - Doctor scripts that check RTK install state, Claude Code hooks, and legacy token-saver conflicts.
 - H5G rollout docs for replacing the old `token-saver` marketplace entry.
@@ -50,7 +51,7 @@ git clone https://github.com/michaelericksonh5/rtk-token-saver
 cd rtk-token-saver
 ```
 
-Marketplace install gives Claude Code the `/rtk-token-saver` skill, forced Compact TLDR style, and fail-open hooks. On `SessionStart`, the hook checks for approved RTK and attempts the existing checksum-verified installer if RTK is missing or the wrong version. If `CLAUDE_ENV_FILE` is present, the hook writes RTK/PATH status for Claude Code to pick up. Hook state is stored under `CLAUDE_PLUGIN_DATA`.
+Marketplace install gives Claude Code the `/rtk-token-saver` skill, forced Compact TLDR style, and fail-open hooks. On `SessionStart`, the hook checks for approved RTK and attempts the existing checksum-verified installer if RTK is missing or the wrong version. It also detects the user's current OS/shell versions and writes them to global `~/.claude/ENV.md` with an `@ENV.md` reference in `~/.claude/CLAUDE.md`. If `CLAUDE_ENV_FILE` is present, the hook writes RTK/PATH status for Claude Code to pick up. Hook state is stored under `CLAUDE_PLUGIN_DATA`.
 
 The setup scripts remain available from a checked-out repo for users who want to review or preinstall RTK manually before plugin use.
 
@@ -140,6 +141,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\validate-package.ps1
 
 - The plugin hook wraps only selected simple Bash commands and fails open.
 - RTK proxies shell commands, so this wrapper installs only pinned RTK `0.40.0` with checksum verification.
+- Environment notes are generated per user at session start; they should never hardcode another user's shell versions.
 - Compact TLDR output is forced in Claude Code by this plugin and should expand when safety, exact errors, or user requests require detail.
 - Cowork/Desktop users get guidance only unless that surface honors Claude Code plugin hooks and output styles.
 - Full command output may still exist in RTK's local logs when RTK preserves raw output.
