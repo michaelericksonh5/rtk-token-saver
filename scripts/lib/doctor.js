@@ -178,7 +178,7 @@ function runDoctor(options = {}) {
     check('RTK PreToolUse hook configured', rtkHooks.length > 0 || pluginHasRtkPreToolHook, [...rtkHooks, ...pluginPreToolCommands].join(' | ') || 'No RTK PreToolUse hook found.'),
     check('Legacy token-saver hooks absent', tokenSaverHooks.length === 0, tokenSaverHooks.join(' | ') || 'No legacy token-saver hooks found.'),
     check('Other PreToolUse hooks reviewed', nonRtkPreToolHooks.length === 0, nonRtkPreToolHooks.join(' | ') || 'No non-RTK PreToolUse command hooks found.'),
-    check('Wrapper plugin hooks configured', pluginManifest.hooks === './hooks/hooks.json' && fs.existsSync(pluginHooksPath), pluginManifest.hooks || 'No plugin hooks configured.')
+    check('Wrapper plugin hooks configured', fs.existsSync(path.join(pluginRoot, 'hooks', 'hooks.json')), 'hooks/hooks.json is auto-discovered by Claude Code.')
   ];
 
   return {

@@ -11,14 +11,14 @@ const { ASSETS, RTK_VERSION, defaultInstallDir } = require('../scripts/lib/insta
 const { validatePackage } = require('../scripts/lib/validate-package');
 const { handlePreToolUse, handleSessionStart } = require('../hooks/lib/rtk-hooks');
 
-test('plugin manifest registers forced Compact TLDR and hooks', () => {
+test('plugin manifest registers forced Compact TLDR and default hooks', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(root, '.claude-plugin', 'plugin.json'), 'utf8'));
   const outputStyle = fs.readFileSync(path.join(root, 'output-styles', 'compact-tldr.md'), 'utf8');
   assert.strictEqual(manifest.name, 'rtk-token-saver');
-  assert.strictEqual(manifest.version, '0.3.0');
+  assert.strictEqual(manifest.version, '0.3.1');
   assert.strictEqual(manifest.skills, undefined);
   assert.strictEqual(manifest.outputStyles, './output-styles/compact-tldr.md');
-  assert.strictEqual(manifest.hooks, './hooks/hooks.json');
+  assert.strictEqual(manifest.hooks, undefined);
   assert.strictEqual(fs.existsSync(path.join(root, 'hooks', 'hooks.json')), true);
   assert.match(outputStyle, /force-for-plugin: true/);
 });
